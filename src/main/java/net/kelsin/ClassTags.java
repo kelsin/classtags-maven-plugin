@@ -43,6 +43,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 
 import net.kelsin.Klass;
+import net.kelsin.Source;
 
 /**
  * Mojo which generates a .classtags file full of all classes in classpath
@@ -59,30 +60,36 @@ public class ClassTags extends AbstractMojo {
 	public void execute() throws MojoExecutionException {
 		getLog().info("Generating Classtags");
 		Set<Klass> classes = new HashSet();
-		Set<String> elements = collectClasspathElements();
 
-		for(String element: elements) {
-			File elementFile = new File(element);
-			if(elementFile.exists()) {
-				if(elementFile.isDirectory()) {
-					classes.addAll(processDirectory(elementFile));
-				} else {
-					classes.addAll(processJar(elementFile));
-				}
-			}
-		}
+		processElements(classes, collectMavenClasspathElements(), Source.MAVEN);
+		processElements(classes, collectBootClasspathElements(), Source.BOOT);
+		processElements(classes, collectExtensionClasspathElements(), Source.EXTENSION);
 
+		// Sort and output the classes
 		List<Klass> sortedKlasses = new ArrayList(classes);
 		Collections.sort(sortedKlasses);
 		File tags = new File(project.getBasedir(), TAG_FILE);
 		try {
 			PrintWriter writer = new PrintWriter(tags, "UTF-8");
 			for(Klass klass: sortedKlasses) {
-				writer.println(klass.getName());
+				writer.println(klass.toString());
 			}
 			writer.close();
 		} catch (IOException exception) {
 			getLog().error("Error writing tags file");
+		}
+	}
+
+	public void processElements(Set<Klass> classes, Set<String> elements, Source source) {
+		for(String element: elements) {
+			File elementFile = new File(element);
+			if(elementFile.exists()) {
+				if(elementFile.isDirectory()) {
+					classes.addAll(processDirectory(elementFile, source));
+				} else {
+					classes.addAll(processJar(elementFile, source));
+				}
+			}
 		}
 	}
 
@@ -140,12 +147,12 @@ public class ClassTags extends AbstractMojo {
 		return elements;
 	}
 
-	public Set<Klass> processDirectory(File dir) {
+	public Set<Klass> processDirectory(File dir, Source source) {
 		getLog().info("Scanning: " + dir.getAbsolutePath());
-		return processDirectory(dir, dir);
+		return processDirectory(dir, dir, source);
 	}
 
-	public Set<Klass> processDirectory(File dir, File root) {
+	public Set<Klass> processDirectory(File dir, File root, Source source) {
 		Set<Klass> classes = new HashSet();
 
 		if(dir.exists() && dir.isDirectory()) {
@@ -153,13 +160,13 @@ public class ClassTags extends AbstractMojo {
 			for(File file: files) {
 				if(file.exists()) {
 					if(file.isDirectory()) {
-						classes.addAll(processDirectory(file, root));
+						classes.addAll(processDirectory(file, root, source));
 					} else {
 						Path path = FileSystems.getDefault().getPath(file.getName());
 						if(CLASSMATCHER.matches(path)) {
 							String name = processClassFile(file, root);
 							if(name != null) {
-								addKlass(classes, name);
+								addKlass(classes, name, source);
 							}
 						}
 					}
@@ -198,7 +205,7 @@ public class ClassTags extends AbstractMojo {
 		}
 	}
 
-	public Set<Klass> processJar(File jar) {
+	public Set<Klass> processJar(File jar, Source source) {
 		Set<Klass> classes = new HashSet();
 
 		getLog().info("Processing: " + jar.getName());
@@ -207,7 +214,7 @@ public class ClassTags extends AbstractMojo {
 			for(ZipEntry entry=zip.getNextEntry();entry!=null;entry=zip.getNextEntry()) {
 				if(entry.getName().endsWith(".class") && !entry.isDirectory()) {
 					String name = processClassNameFromPath(entry.getName());
-					addKlass(classes, name);
+					addKlass(classes, name, source);
 				}
 			}
 		} catch (IOException e) {
@@ -223,12 +230,19 @@ public class ClassTags extends AbstractMojo {
 	 *
 	 * @param collection The collection to add to
 	 * @param name The full name of the class to add
+	 * @param source Where this class is from
 	 */
-	public void addKlass(Collection<Klass> collection, String name) {
+	public void addKlass(Collection<Klass> collection, String name, Source source) {
 		// Don't add any inner classes for now
 		if(!name.contains("$")) {
-			// getLog().info("Adding: " + name);
-			collection.add(new Klass(name));
+			try {
+				Klass klass = Klass.fromName(name, source);
+				collection.add(klass);
+			} catch (IllegalArgumentException e) {
+				// Don't bother with extra messages, most of these are weird
+				// meta classes that we don't care about
+				// getLog().info("Bad class name: " + name);
+			}
 		}
 	}
 }
