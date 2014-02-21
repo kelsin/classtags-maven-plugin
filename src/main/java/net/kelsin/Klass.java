@@ -3,8 +3,8 @@ package net.kelsin;
 import java.lang.IllegalArgumentException;
 import java.lang.String;
 import java.lang.StringBuilder;
-import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import net.kelsin.Source;
 
