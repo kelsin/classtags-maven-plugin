@@ -1,6 +1,9 @@
 *.class
 target
 
+# Tags
+tags
+
 # Package Files
 *.jar
 *.war
