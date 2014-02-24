@@ -86,6 +86,8 @@
 							<goal>jar</goal>
 						</goals>
 						<configuration>
+							<detectJavaApiLink/>
+							<detectLinks/>
 							<includeDependencySources>true</includeDependencySources>
 						</configuration>
 					</execution>

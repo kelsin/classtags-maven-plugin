@@ -51,7 +51,8 @@ public class Klass implements Comparable<Klass> {
 		if (o == this) return true;
 		if (!(o instanceof Klass)) return false;
 		Klass other = (Klass)o;
-		return this.name.equals(other.name);
+		if (!this.name.equals(other.name)) return false;
+		return this.pkg.equals(other.pkg);
 	}
 
 	public int hashCode() {
