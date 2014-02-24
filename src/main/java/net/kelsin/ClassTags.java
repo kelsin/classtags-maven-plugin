@@ -2,13 +2,13 @@ package net.kelsin;
 
 /*
  * Copyright 2001-2005 The Apache Software Foundation.
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *		http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -50,6 +50,7 @@ import org.apache.maven.project.MavenProject;
  */
 @Mojo(name = "generate", requiresDependencyResolution = ResolutionScope.TEST)
 public class ClassTags extends AbstractMojo {
+
 	public static final PathMatcher JARMATCHER = FileSystems.getDefault().getPathMatcher("glob:*.jar");
 	public static final PathMatcher CLASSMATCHER = FileSystems.getDefault().getPathMatcher("glob:*.class");
 	public static final String TAG_FILE = ".classtags";
@@ -71,7 +72,7 @@ public class ClassTags extends AbstractMojo {
 		File tags = new File(project.getBasedir(), TAG_FILE);
 		try {
 			PrintWriter writer = new PrintWriter(tags, "UTF-8");
-			for(Klass klass: sortedKlasses) {
+			for (Klass klass : sortedKlasses) {
 				writer.println(klass.toString());
 			}
 			writer.close();
@@ -81,10 +82,10 @@ public class ClassTags extends AbstractMojo {
 	}
 
 	public void processElements(Set<Klass> classes, Set<String> elements, Source source) {
-		for(String element: elements) {
+		for (String element : elements) {
 			File elementFile = new File(element);
-			if(elementFile.exists()) {
-				if(elementFile.isDirectory()) {
+			if (elementFile.exists()) {
+				if (elementFile.isDirectory()) {
 					classes.addAll(processDirectory(elementFile, source));
 				} else {
 					classes.addAll(processJar(elementFile, source));
@@ -130,13 +131,13 @@ public class ClassTags extends AbstractMojo {
 		Set<String> elements = new HashSet();
 
 		String[] dirs = System.getProperty("java.ext.dirs").split(";");
-		for(String dir: dirs) {
+		for (String dir : dirs) {
 			File dirFile = new File(dir);
-			if(dirFile.exists() && dirFile.isDirectory()) {
+			if (dirFile.exists() && dirFile.isDirectory()) {
 				File[] files = dirFile.listFiles();
-				for(File file: files) {
+				for (File file : files) {
 					Path path = FileSystems.getDefault().getPath(file.getName());
-					if(JARMATCHER.matches(path)) {
+					if (JARMATCHER.matches(path)) {
 						elements.add(file.getAbsolutePath());
 					}
 				}
@@ -155,17 +156,17 @@ public class ClassTags extends AbstractMojo {
 	public Set<Klass> processDirectory(File dir, File root, Source source) {
 		Set<Klass> classes = new HashSet();
 
-		if(dir.exists() && dir.isDirectory()) {
+		if (dir.exists() && dir.isDirectory()) {
 			File[] files = dir.listFiles();
-			for(File file: files) {
-				if(file.exists()) {
-					if(file.isDirectory()) {
+			for (File file : files) {
+				if (file.exists()) {
+					if (file.isDirectory()) {
 						classes.addAll(processDirectory(file, root, source));
 					} else {
 						Path path = FileSystems.getDefault().getPath(file.getName());
-						if(CLASSMATCHER.matches(path)) {
+						if (CLASSMATCHER.matches(path)) {
 							String name = processClassFile(file, root);
-							if(name != null) {
+							if (name != null) {
 								addKlass(classes, name, source);
 							}
 						}
@@ -179,25 +180,25 @@ public class ClassTags extends AbstractMojo {
 	/**
 	 * Take a path like "net/kelsin/ClassTags.class" and convert to
 	 * "net.kelsin.ClassTags"
-	 *
+	 * 
 	 * @param name The relative path of the class to work with
 	 */
 	public String processClassNameFromPath(String name) {
 		StringBuilder className = new StringBuilder();
-		for(String part: name.split("[/\\" + File.separator + "]")) {
-			if(className.length() != 0) {
+		for (String part : name.split("[/\\" + File.separator + "]")) {
+			if (className.length() != 0) {
 				className.append('.');
 			}
 			className.append(part);
-			if(part.endsWith(".class")) {
-				className.setLength(className.length()-".class".length());
+			if (part.endsWith(".class")) {
+				className.setLength(className.length() - ".class".length());
 			}
 		}
 		return className.toString();
 	}
 
 	public String processClassFile(File file, File root) {
-		if(file.exists() && file.isFile()) {
+		if (file.exists() && file.isFile()) {
 			String relative = file.getAbsolutePath().substring(root.getAbsolutePath().length());
 			return processClassNameFromPath(relative);
 		} else {
@@ -210,9 +211,9 @@ public class ClassTags extends AbstractMojo {
 
 		getLog().info("Processing: " + jar.getName());
 		try {
-			ZipInputStream zip=new ZipInputStream(new FileInputStream(jar));
-			for(ZipEntry entry=zip.getNextEntry();entry!=null;entry=zip.getNextEntry()) {
-				if(entry.getName().endsWith(".class") && !entry.isDirectory()) {
+			ZipInputStream zip = new ZipInputStream(new FileInputStream(jar));
+			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+				if (entry.getName().endsWith(".class") && !entry.isDirectory()) {
 					String name = processClassNameFromPath(entry.getName());
 					addKlass(classes, name, source);
 				}
@@ -227,14 +228,14 @@ public class ClassTags extends AbstractMojo {
 	/**
 	 * Create a Klass object from a name and add it to a collection but only if
 	 * it's not a inner class.
-	 *
+	 * 
 	 * @param collection The collection to add to
 	 * @param name The full name of the class to add
 	 * @param source Where this class is from
 	 */
 	public void addKlass(Collection<Klass> collection, String name, Source source) {
 		// Don't add any inner classes for now
-		if(!name.contains("$")) {
+		if (!name.contains("$")) {
 			try {
 				Klass klass = Klass.fromName(name, source);
 				collection.add(klass);
