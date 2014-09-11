@@ -3,6 +3,9 @@ target
 
 # Tags
 tags
+GTAGS
+GRTAGS
+GPATH
 
 # Package Files
 *.jar
