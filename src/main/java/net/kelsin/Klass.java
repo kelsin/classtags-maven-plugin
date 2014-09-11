@@ -14,23 +14,25 @@ public class Klass implements Comparable<Klass> {
 	private final String name;
 	private final String pkg;
 	private final Source source;
+	private final String from;
 
-	public static Klass fromName(final String fullname, final Source source) {
+	public static Klass fromName(final String fullname, final Source source, final String from) {
 		Matcher m = CLASSNAME.matcher(fullname);
 		if(m.find()) {
-			return new Klass(m.group(2), m.group(1), source);
+			return new Klass(m.group(2), m.group(1), source, from);
 		} else {
 			throw new IllegalArgumentException("Must be a valid java full class name: " + fullname);
 		}
 	}
 
-	public Klass(final String name, final String pkg, final Source source) {
+	public Klass(final String name, final String pkg, final Source source, final String from) {
 		this.name = name;
 		this.pkg = pkg;
 		this.source = source;
+		this.from = from;
 	}
 
-	public Klass(final String fullname, final Source source) {
+	public Klass(final String fullname, final Source source, final String from) {
 		Matcher m = CLASSNAME.matcher(fullname);
 		if(m.find()) {
 			this.name = m.group(2);
@@ -40,6 +42,7 @@ public class Klass implements Comparable<Klass> {
 		}
 
 		this.source = source;
+		this.from = from;
 	}
 
 	public String getName() {
@@ -70,6 +73,8 @@ public class Klass implements Comparable<Klass> {
 		builder.append(this.pkg);
 		builder.append(':');
 		builder.append(this.source.toString());
+		builder.append(':');
+		builder.append(this.from);
 		return builder.toString();
 	}
 }

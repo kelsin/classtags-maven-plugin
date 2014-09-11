@@ -2,13 +2,13 @@ package net.kelsin;
 
 /*
  * Copyright 2001-2005 The Apache Software Foundation.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -62,6 +62,7 @@ public class ClassTags extends AbstractMojo {
 		getLog().info("Generating Classtags");
 		Set<Klass> classes = new HashSet();
 
+		processElements(classes, collectProjectClasspathElements(), Source.PROJECT);
 		processElements(classes, collectMavenClasspathElements(), Source.MAVEN);
 		processElements(classes, collectBootClasspathElements(), Source.BOOT);
 		processElements(classes, collectExtensionClasspathElements(), Source.EXTENSION);
@@ -94,14 +95,12 @@ public class ClassTags extends AbstractMojo {
 		}
 	}
 
-	public Set<String> collectClasspathElements() {
+	public Set<String> collectProjectClasspathElements() {
 		Set<String> elements = new HashSet();
 
-		elements.addAll(collectMavenClasspathElements());
-		elements.addAll(collectBootClasspathElements());
-		elements.addAll(collectExtensionClasspathElements());
+		elements.add(project.getBuild().getOutputDirectory());
 
-		getLog().info("Found " + elements.size() + " Total Classpath Elements");
+		getLog().info("Found " + elements.size() + " Project Classpath Elements");
 		return elements;
 	}
 
@@ -167,7 +166,7 @@ public class ClassTags extends AbstractMojo {
 						if (CLASSMATCHER.matches(path)) {
 							String name = processClassFile(file, root);
 							if (name != null) {
-								addKlass(classes, name, source);
+								addKlass(classes, name, source, root.toString());
 							}
 						}
 					}
@@ -178,10 +177,10 @@ public class ClassTags extends AbstractMojo {
 	}
 
 	/**
-	 * Take a path like "net/kelsin/ClassTags.class" and convert to
+	 * Take a string like "net/kelsin/ClassTags.class" and convert to
 	 * "net.kelsin.ClassTags"
-	 * 
-	 * @param name The relative path of the class to work with
+	 *
+	 * @param name the path to work with
 	 */
 	public String processClassNameFromPath(String name) {
 		StringBuilder className = new StringBuilder();
@@ -197,10 +196,34 @@ public class ClassTags extends AbstractMojo {
 		return className.toString();
 	}
 
+	/**
+	 * Take a file like
+	 * "/home/kelsin/project/src/main/java/net/kelsin/ClassTags.class" and
+	 * convert to "net.kelsin.ClassTags"
+	 *
+	 * @param file the file to work with
+	 * @param root the root of this source tree
+	 */
+	public String processClassNameFromFile(File file, File root) {
+		Path filePath = file.toPath();
+		Path relativePath = filePath.subpath(root.toPath().getNameCount(), filePath.getNameCount());
+		StringBuilder className = new StringBuilder();
+		for(Path element: relativePath) {
+			String part = element.toString();
+			className.append(part);
+
+			if(part.endsWith(".class")) {
+				className.setLength(className.length() - 6);
+			} else {
+				className.append('.');
+			}
+		}
+		return className.toString();
+	}
+
 	public String processClassFile(File file, File root) {
 		if (file.exists() && file.isFile()) {
-			String relative = file.getAbsolutePath().substring(root.getAbsolutePath().length());
-			return processClassNameFromPath(relative);
+			return processClassNameFromFile(file, root);
 		} else {
 			return null;
 		}
@@ -215,7 +238,7 @@ public class ClassTags extends AbstractMojo {
 			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
 				if (entry.getName().endsWith(".class") && !entry.isDirectory()) {
 					String name = processClassNameFromPath(entry.getName());
-					addKlass(classes, name, source);
+					addKlass(classes, name, source, jar.toString());
 				}
 			}
 		} catch (IOException e) {
@@ -228,16 +251,16 @@ public class ClassTags extends AbstractMojo {
 	/**
 	 * Create a Klass object from a name and add it to a collection but only if
 	 * it's not a inner class.
-	 * 
+	 *
 	 * @param collection The collection to add to
 	 * @param name The full name of the class to add
 	 * @param source Where this class is from
 	 */
-	public void addKlass(Collection<Klass> collection, String name, Source source) {
+	public void addKlass(Collection<Klass> collection, String name, Source source, String from) {
 		// Don't add any inner classes for now
 		if (!name.contains("$")) {
 			try {
-				Klass klass = Klass.fromName(name, source);
+				Klass klass = Klass.fromName(name, source, from);
 				collection.add(klass);
 			} catch (IllegalArgumentException e) {
 				// Don't bother with extra messages, most of these are weird
