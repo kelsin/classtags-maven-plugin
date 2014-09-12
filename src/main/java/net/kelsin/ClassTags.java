@@ -41,6 +41,7 @@ import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
@@ -67,18 +68,30 @@ public class ClassTags extends AbstractMojo {
 		processElements(classes, collectBootClasspathElements(), Source.BOOT);
 		processElements(classes, collectExtensionClasspathElements(), Source.EXTENSION);
 
-		// Sort and output the classes
-		List<Klass> sortedKlasses = new ArrayList(classes);
-		Collections.sort(sortedKlasses);
 		File tags = new File(project.getBasedir(), TAG_FILE);
-		try {
-			PrintWriter writer = new PrintWriter(tags, "UTF-8");
-			for (Klass klass : sortedKlasses) {
-				writer.println(klass.toString());
+
+		if (classes.isEmpty()) {
+			if (tags.exists()) {
+				tags.delete();
 			}
-			writer.close();
-		} catch (IOException exception) {
-			getLog().error("Error writing tags file");
+		} else {
+			// Sort and output the classes
+			List<Klass> sortedKlasses = new ArrayList(classes);
+			Collections.sort(sortedKlasses);
+			PrintWriter writer = null;
+			try {
+				writer = new PrintWriter(tags, "UTF-8");
+				for (Klass klass : sortedKlasses) {
+					writer.println(klass.toString());
+				}
+			} catch (IOException exception) {
+				getLog().error("Error writing tags file");
+			} finally {
+				if (writer != null) {
+					writer.close();
+					writer = null;
+				}
+			}
 		}
 	}
 
